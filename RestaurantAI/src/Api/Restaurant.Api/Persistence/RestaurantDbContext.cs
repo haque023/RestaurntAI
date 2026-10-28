@@ -20,6 +20,11 @@ public sealed class RestaurantDbContext(DbContextOptions<RestaurantDbContext> op
     /// <summary>Public discovery read model; intentionally cross-tenant and without RLS.</summary>
     public DbSet<DiscoveryListingRow> DiscoveryListings => Set<DiscoveryListingRow>();
 
+    public DbSet<DiningTable> Tables => Set<DiningTable>();
+
+    /// <summary>Public QR lookup (token → restaurant/branch/table); holds no confidential data, no RLS.</summary>
+    public DbSet<QrCodeRow> QrCodes => Set<QrCodeRow>();
+
     protected override string Schema => SchemaName;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -111,6 +116,20 @@ public sealed class DiscoveryListingRow
     }
 }
 
+/// <summary>Maps a printed table QR token to its venue. Written in the same transaction as the table.</summary>
+public sealed class QrCodeRow
+{
+    public string Token { get; set; } = string.Empty;
+
+    public Guid TenantId { get; set; }
+
+    public Guid BranchId { get; set; }
+
+    public Guid TableId { get; set; }
+
+    public string TableLabel { get; set; } = string.Empty;
+}
+
 internal static class OpeningHoursMapping
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
@@ -139,6 +158,15 @@ internal sealed class RestaurantConfiguration : IEntityTypeConfiguration<Domain.
         builder.Property(r => r.DefaultCurrency).HasMaxLength(3).IsFixedLength();
         builder.Property(r => r.TimeZone).HasMaxLength(64);
         builder.Property(r => r.Status).HasConversion<string>().HasMaxLength(32);
+        builder.Property(r => r.Phone).HasMaxLength(40);
+        builder.Property(r => r.Website).HasMaxLength(300);
+        builder.Property(r => r.PlanCode).HasMaxLength(32).HasDefaultValue("starter");
+        builder.Property(r => r.AiEnabled).HasDefaultValue(true);
+        builder.Property(r => r.AiKnowledge).HasMaxLength(Domain.Restaurant.MaxAiKnowledgeLength).HasDefaultValue(string.Empty);
+        builder.Property(r => r.AiTone).HasMaxLength(200).HasDefaultValue(string.Empty);
+        builder.Property(r => r.SuspensionReason).HasMaxLength(500);
+        builder.Property(r => r.CreatedAt).HasDefaultValueSql("now()");
+        builder.Ignore(r => r.Plan);
         builder.HasMany(r => r.Branches).WithOne().HasForeignKey(b => b.TenantId);
         builder.Navigation(r => r.Branches).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Ignore(r => r.IsListed);
@@ -175,5 +203,32 @@ internal sealed class DiscoveryListingConfiguration : IEntityTypeConfiguration<D
         builder.HasIndex(l => new { l.Latitude, l.Longitude });
         builder.HasIndex(l => l.Cuisines).HasMethod("gin");
         builder.HasIndex(l => l.DietaryOptions).HasMethod("gin");
+    }
+}
+
+internal sealed class DiningTableConfiguration : IEntityTypeConfiguration<DiningTable>
+{
+    public void Configure(EntityTypeBuilder<DiningTable> builder)
+    {
+        builder.ToTable("dining_tables");
+        builder.HasKey(t => t.Id);
+        builder.Property(t => t.Label).HasMaxLength(40).IsRequired();
+        builder.Property(t => t.Status).HasConversion<string>().HasMaxLength(32);
+        builder.Property(t => t.QrToken).HasMaxLength(64).IsRequired();
+        builder.HasIndex(t => t.QrToken).IsUnique();
+        builder.HasIndex(t => new { t.TenantId, t.BranchId, t.Label }).IsUnique();
+        builder.Ignore(t => t.DomainEvents);
+    }
+}
+
+internal sealed class QrCodeConfiguration : IEntityTypeConfiguration<QrCodeRow>
+{
+    public void Configure(EntityTypeBuilder<QrCodeRow> builder)
+    {
+        builder.ToTable("qr_codes");
+        builder.HasKey(q => q.Token);
+        builder.Property(q => q.Token).HasMaxLength(64);
+        builder.Property(q => q.TableLabel).HasMaxLength(40);
+        builder.HasIndex(q => q.TableId).IsUnique();
     }
 }

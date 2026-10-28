@@ -1,21 +1,20 @@
 import { useAuth } from "@restaurant-ai/auth";
 import { Button, ErrorAlert, Spinner } from "@restaurant-ai/ui";
 import { useEffect, useState } from "react";
-import { Navigate, Outlet, useLocation, useParams, useSearchParams } from "react-router";
+import { Outlet, useParams } from "react-router";
 import { CartProvider } from "../cart/CartContext";
 import { useEnterRestaurant } from "../session/useEnterRestaurant";
+import { useVenueTable } from "../session/useVenueTable";
 import { rememberVenue } from "../venue";
 
 /**
- * Wraps every page under /r/:tenantId/:branchId (QR links and "View menu" from discovery).
- * The guest's token is switched to this restaurant automatically.
+ * Wraps every page under /r/:tenantId/:branchId ("Order here" from discovery, or after a QR scan).
+ * The token is scoped to this restaurant and branch automatically; no sign-in is required.
  */
 export function VenueLayout() {
   const { tenantId = "", branchId = "" } = useParams();
-  const [search] = useSearchParams();
-  const tableId = search.get("table");
   const { user } = useAuth();
-  const location = useLocation();
+  const tableId = useVenueTable();
   const enterRestaurant = useEnterRestaurant();
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
@@ -24,22 +23,18 @@ export function VenueLayout() {
     rememberVenue({ tenantId, branchId, tableId });
   }, [tenantId, branchId, tableId]);
 
-  const needsSwitch = user !== null && user.tenantId !== tenantId;
+  const needsSwitch = !user || user.tenantId !== tenantId || (user.branchId !== null && user.branchId !== branchId);
 
   useEffect(() => {
     if (!needsSwitch) return;
     let cancelled = false;
-    enterRestaurant(tenantId).catch((e: unknown) => {
+    enterRestaurant(tenantId, branchId).catch((e: unknown) => {
       if (!cancelled) setError(e);
     });
     return () => {
       cancelled = true;
     };
-  }, [needsSwitch, tenantId, enterRestaurant, attempt]);
-
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
-  }
+  }, [needsSwitch, tenantId, branchId, enterRestaurant, attempt]);
 
   if (needsSwitch) {
     return error ? (

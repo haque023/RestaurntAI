@@ -16,15 +16,21 @@ dotnet run --project src/Mcp.Gateway       # http://localhost:5100/mcp
 
 In Development each service applies its own migrations on startup.
 
-### Getting a token
+### Signing in
 
-```bash
-curl -s localhost:5080/api/auth/dev-token -H 'content-type: application/json' -d '{
-  "tenantId": "11111111-1111-1111-1111-111111111111",
-  "roles": ["restaurant_manager"],
-  "permissions": ["menu.read","menu.write","orders.create","orders.read","orders.cancel","orders.manage"]
-}'
-```
+Every app signs in with email and password (Identity service, PBKDF2 hashes, lockout after 5
+failed attempts). In Development a platform administrator is created on first start from
+`Identity:BootstrapAdmin` (`appsettings.Development.json`): `admin@restaurant-ai.local` /
+`Admin#2026dev`. Outside Development set `Identity__BootstrapAdmin__Email/Password` from a secret
+store, or leave them empty.
+
+- Customers register in the guest app; guests who scan a table QR get a temporary guest identity
+  (6 h) and can order and use the AI waiter without an account.
+- Restaurants sign up in the restaurant console (`/signup`) and wait for verification, or an
+  administrator onboards them (Admin → Restaurants → Onboard).
+- Owners and managers add staff (role + optional branch) under Staff.
+
+Test scripts can still mint tokens with `POST /api/auth/dev-token` (Development only).
 
 ## AI waiter (Claude)
 
@@ -38,6 +44,11 @@ dotnet user-secrets set "AI:Claude:ApiKey" "<your key>" --project src/AI/Ai.Api
 or export `ANTHROPIC_API_KEY`. Settings live under `AI:Claude` (model `claude-opus-5-5`, effort
 `medium`, server-side refusal fallback on, MCP endpoint). Never put the key in `appsettings*.json`.
 
+Cost controls: each restaurant's plan caps AI waiter turns per month (Starter 300, Growth 3,000,
+Pro 30,000); the discovery assistant is capped per user per day (`AI:Usage:DiscoveryTurnsPerUserPerDay`,
+default 60); the gateway limits AI calls to 20/minute per user. Administrators can switch AI off per
+restaurant. Every turn is metered in `ai_memory.ai_usage` (tokens, tool calls, latency, outcome).
+
 ## Ports
 
 | Service | Port |
@@ -45,7 +56,8 @@ or export `ANTHROPIC_API_KEY`. Settings live under `AI:Claude` (model `claude-op
 | Gateway.Api | 5080 |
 | Mcp.Gateway | 5100 |
 | Identity / Consumer / Restaurant / Menu / Order / Reservation / Loyalty / Admin | 5201–5208 |
-| Ai.Api (AI waiter) | 5300 |
+| Ai.Api (AI waiter, discovery assistant) | 5300 |
+| Guest app / Restaurant console / Platform admin (Vite) | 3000 / 3001 / 3002 |
 | PostgreSQL / Redis / RabbitMQ / RabbitMQ UI / Azurite | 5432 / 6379 / 5672 / 15672 / 10000 |
 
 ## Migrations
@@ -63,7 +75,8 @@ For the containerized stack, `Database__MigrateOnStartup=true` enables startup m
 ## Full stack in containers
 
 ```bash
-JWT_SIGNING_KEY=$(openssl rand -hex 32) docker compose -f deploy/docker-compose.yml up --build
+JWT_SIGNING_KEY=$(openssl rand -hex 32) ANTHROPIC_API_KEY=<key> \
+  ADMIN_EMAIL=<email> ADMIN_PASSWORD=<password> docker compose -f deploy/docker-compose.yml up --build
 ```
 
 Gateway on `:8080`, MCP Gateway on `:8090`.

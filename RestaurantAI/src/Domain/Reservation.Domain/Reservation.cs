@@ -99,6 +99,27 @@ public sealed class Reservation : AggregateRoot<Guid>, IBranchScoped
         Raise(new ReservationCancelled(Id, TenantId, BranchId, reason));
     }
 
+    public void Seat()
+    {
+        if (Status is not (ReservationStatus.Confirmed or ReservationStatus.Pending))
+        {
+            throw new DomainException("reservation.invalid_transition", $"A {Status} reservation cannot be seated.");
+        }
+
+        Status = ReservationStatus.Seated;
+        Raise(new ReservationSeated(Id, TenantId, BranchId));
+    }
+
+    public void Complete()
+    {
+        if (Status != ReservationStatus.Seated)
+        {
+            throw new DomainException("reservation.invalid_transition", "Only seated reservations can be completed.");
+        }
+
+        Status = ReservationStatus.Completed;
+    }
+
     public void MarkNoShow()
     {
         if (Status != ReservationStatus.Confirmed)
@@ -107,9 +128,14 @@ public sealed class Reservation : AggregateRoot<Guid>, IBranchScoped
         }
 
         Status = ReservationStatus.NoShow;
+        Raise(new ReservationNoShow(Id, TenantId, BranchId, CustomerId));
     }
 }
 
 public sealed record ReservationCreated(Guid ReservationId, Guid TenantId, Guid BranchId, Guid CustomerId, int PartySize, DateTimeOffset StartsAt) : DomainEvent;
 
 public sealed record ReservationCancelled(Guid ReservationId, Guid TenantId, Guid BranchId, string Reason) : DomainEvent;
+
+public sealed record ReservationSeated(Guid ReservationId, Guid TenantId, Guid BranchId) : DomainEvent;
+
+public sealed record ReservationNoShow(Guid ReservationId, Guid TenantId, Guid BranchId, Guid CustomerId) : DomainEvent;

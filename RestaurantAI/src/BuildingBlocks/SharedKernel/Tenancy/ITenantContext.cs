@@ -11,6 +11,9 @@ public interface ITenantContext
 
     Guid? BranchId { get; }
 
+    /// <summary>The table a QR session is bound to, if any.</summary>
+    Guid? TableId => null;
+
     IReadOnlySet<string> Roles { get; }
 
     IReadOnlySet<string> Permissions { get; }

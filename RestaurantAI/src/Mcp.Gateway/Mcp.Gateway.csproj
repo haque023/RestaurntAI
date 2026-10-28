@@ -10,5 +10,6 @@
   <ItemGroup>
     <ProjectReference Include="..\BuildingBlocks\ServiceDefaults\ServiceDefaults.csproj" />
     <ProjectReference Include="..\Infrastructure\Persistence\Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\Infrastructure\Messaging\Infrastructure.Messaging.csproj" />
   </ItemGroup>
 </Project>

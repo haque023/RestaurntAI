@@ -3,15 +3,15 @@ import { useApi } from "@restaurant-ai/auth";
 import { Button, Card, EmptyState, ErrorAlert, Field, formatMoney, PageHeader } from "@restaurant-ai/ui";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { cartEstimate } from "../cart/cart";
 import { useCart } from "../cart/useCart";
+import { useVenueTable } from "../session/useVenueTable";
 import { venuePath } from "../venue";
 
 export function CartPage() {
   const { tenantId = "", branchId = "" } = useParams();
-  const [search] = useSearchParams();
-  const tableId = search.get("table");
+  const tableId = useVenueTable();
   const menuLink = venuePath({ tenantId, branchId, tableId });
   const api = useApi();
   const navigate = useNavigate();

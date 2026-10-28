@@ -47,6 +47,7 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Databas
 
 app.MapDefaultEndpoints();
 app.MapOrderEndpoints();
+app.MapServiceRequestEndpoints();
 
 await app.RunAsync();
 

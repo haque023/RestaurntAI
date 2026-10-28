@@ -15,11 +15,14 @@ public sealed class McpAuthorizationService(
 {
     public ToolCallerContext Authorize(string toolName, Guid? branchId = null)
     {
-        var caller = resolver.Resolve();
+        var requiresTenant = permissions.Find(toolName)?.RequiresTenant ?? true;
+        var caller = resolver.Resolve(requiresTenant);
         if (caller is null)
         {
             audit.Denied(toolName, null, "Missing or invalid user/tenant context.");
-            throw new McpException("Not authorized: a signed-in user with a restaurant context is required.");
+            throw new McpException(requiresTenant
+                ? "Not authorized: a signed-in user with a restaurant context is required."
+                : "Not authorized: a signed-in user is required.");
         }
 
         // Fall back to the branch bound to the session (e.g. QR table session).

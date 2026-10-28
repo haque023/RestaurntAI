@@ -14,6 +14,8 @@ public sealed class OrderDbContext(DbContextOptions<OrderDbContext> options, ITe
 
     public DbSet<Domain.Order> Orders => Set<Domain.Order>();
 
+    public DbSet<Domain.ServiceRequest> ServiceRequests => Set<Domain.ServiceRequest>();
+
     protected override string Schema => SchemaName;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -45,8 +47,30 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Domain.Order
             lines.Ignore(l => l.LineTotal);
         });
 
+        builder.OwnsMany(o => o.History, history =>
+        {
+            history.ToJson("history");
+            history.Property(h => h.Status).HasConversion<string>();
+        });
+        builder.Property(o => o.UpdatedAt).HasDefaultValueSql("now()");
+
         builder.HasIndex(o => new { o.TenantId, o.BranchId, o.Status });
+        builder.HasIndex(o => new { o.TenantId, o.BranchId, o.PlacedAt });
         builder.HasIndex(o => new { o.TenantId, o.CustomerId, o.PlacedAt });
         builder.Ignore(o => o.DomainEvents);
+    }
+}
+
+internal sealed class ServiceRequestConfiguration : IEntityTypeConfiguration<Domain.ServiceRequest>
+{
+    public void Configure(EntityTypeBuilder<Domain.ServiceRequest> builder)
+    {
+        builder.ToTable("service_requests");
+        builder.HasKey(r => r.Id);
+        builder.Property(r => r.Kind).HasConversion<string>().HasMaxLength(32);
+        builder.Property(r => r.Status).HasConversion<string>().HasMaxLength(32);
+        builder.Property(r => r.Note).HasMaxLength(Domain.ServiceRequest.MaxNoteLength);
+        builder.HasIndex(r => new { r.TenantId, r.BranchId, r.Status });
+        builder.Ignore(r => r.DomainEvents);
     }
 }

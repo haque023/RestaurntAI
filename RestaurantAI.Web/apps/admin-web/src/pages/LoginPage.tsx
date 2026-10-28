@@ -1,7 +1,6 @@
-import { DevLoginForm } from "@restaurant-ai/auth";
+import { LoginForm } from "@restaurant-ai/auth";
 import { Card, PageHeader } from "@restaurant-ai/ui";
 import { useLocation, useNavigate } from "react-router";
-import { adminPersona } from "../personas";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -10,9 +9,9 @@ export function LoginPage() {
 
   return (
     <>
-      <PageHeader title="Platform administration" description="Privileged access. All actions are audited." />
+      <PageHeader title="Platform administration" description="Restaurants, plans, AI governance, audit and support." />
       <Card narrow>
-        <DevLoginForm persona={adminPersona} onSignedIn={() => navigate(from, { replace: true })} />
+        <LoginForm scope="Admin" onSignedIn={() => navigate(from, { replace: true })} />
       </Card>
     </>
   );

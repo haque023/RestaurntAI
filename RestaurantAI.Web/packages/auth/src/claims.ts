@@ -7,6 +7,10 @@ export interface SessionUser {
   roles: string[];
   permissions: string[];
   expiresAt: number | null;
+  email: string | null;
+  displayName: string | null;
+  /** A temporary identity from a table QR scan (no account). */
+  isGuest: boolean;
 }
 
 function toList(value: unknown): string[] {
@@ -45,6 +49,9 @@ export function parseToken(token: string): SessionUser | null {
       roles: toList(claims.role),
       permissions: toList(claims.permission),
       expiresAt: typeof claims.exp === "number" ? claims.exp * 1000 : null,
+      email: toStringOrNull(claims.email),
+      displayName: toStringOrNull(claims.name),
+      isGuest: claims.guest === "true",
     };
   } catch {
     return null;

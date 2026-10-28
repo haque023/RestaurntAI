@@ -20,7 +20,7 @@ export function RestaurantPage() {
   if (!restaurant.data) {
     return (
       <EmptyState title="Restaurant not registered">
-        <p>This tenant has no restaurant yet. A platform administrator registers restaurants in the Admin app.</p>
+        <p>This account's restaurant could not be found. Contact platform support.</p>
       </EmptyState>
     );
   }
@@ -39,6 +39,7 @@ export function RestaurantPage() {
       <div className="grid">
         <ListingCard restaurant={r} />
         <ProfileForm key={r.id} restaurant={r} />
+        <PlanCard restaurant={r} />
       </div>
 
       <Card>
@@ -121,11 +122,12 @@ function ListingCard({ restaurant }: { restaurant: Restaurant }) {
           : "Your restaurant is hidden from discovery. Guests can still open it from a QR code."}
       </p>
       {missing.length > 0 && <p className="small">Recommended before listing: {missing.join(", ")}.</p>}
+      {restaurant.status === "PendingVerification" && <p className="small">You can list once the platform team has verified the restaurant.</p>}
       <div>
         <Button
           variant={restaurant.isListed ? "default" : "primary"}
           busy={setListing.isPending}
-          disabled={!restaurant.isListed && restaurant.branches.length === 0}
+          disabled={!restaurant.isListed && (restaurant.branches.length === 0 || restaurant.status === "PendingVerification" || restaurant.status === "Suspended")}
           onClick={() => setListing.mutate(!restaurant.isListed)}
         >
           {restaurant.isListed ? "Unlist" : "List in discovery"}
@@ -142,9 +144,12 @@ function ProfileForm({ restaurant }: { restaurant: Restaurant }) {
   const [description, setDescription] = useState(restaurant.description);
   const [cuisines, setCuisines] = useState(restaurant.cuisines.join(", "));
   const [diets, setDiets] = useState(restaurant.dietaryOptions.join(", "));
+  const [phone, setPhone] = useState(restaurant.phone ?? "");
+  const [website, setWebsite] = useState(restaurant.website ?? "");
 
   const save = useMutation({
-    mutationFn: () => api.restaurants.updateProfile({ description, cuisines: splitList(cuisines), dietaryOptions: splitList(diets) }),
+    mutationFn: () =>
+      api.restaurants.updateProfile({ description, cuisines: splitList(cuisines), dietaryOptions: splitList(diets), phone: phone || null, website: website || null }),
     onSuccess: (updated) => queryClient.setQueryData(["restaurant", "current"], updated),
   });
 
@@ -166,6 +171,14 @@ function ProfileForm({ restaurant }: { restaurant: Restaurant }) {
         <Field label="Dietary options (comma separated)">
           <input value={diets} onChange={(e) => setDiets(e.target.value)} placeholder="halal, vegetarian, vegan" />
         </Field>
+        <div className="form-grid">
+          <Field label="Phone">
+            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={40} />
+          </Field>
+          <Field label="Website">
+            <input value={website} onChange={(e) => setWebsite(e.target.value)} maxLength={300} placeholder="https://" />
+          </Field>
+        </div>
         <div className="row">
           <Button type="submit" variant="primary" busy={save.isPending}>
             Save profile
@@ -174,6 +187,23 @@ function ProfileForm({ restaurant }: { restaurant: Restaurant }) {
         </div>
         <ErrorAlert error={save.error} title="Profile not saved" />
       </form>
+    </Card>
+  );
+}
+
+function PlanCard({ restaurant }: { restaurant: Restaurant }) {
+  const plan = restaurant.plan;
+  return (
+    <Card>
+      <h2>Plan: {plan.name}</h2>
+      <ul className="small" style={{ margin: 0, paddingLeft: "1.1rem" }}>
+        <li>
+          {restaurant.branches.length} of {plan.maxBranches} branch{plan.maxBranches === 1 ? "" : "es"}
+        </li>
+        <li>Up to {plan.maxTablesPerBranch} tables per branch</li>
+        <li>AI waiter: {plan.aiWaiter ? `${plan.aiTurnsPerMonth.toLocaleString()} guest messages a month` : "not included"}</li>
+      </ul>
+      <p className="small muted">{plan.monthlyPrice === 0 ? "Free" : `${plan.currency} ${plan.monthlyPrice}/month`}. To change plan, contact the platform team.</p>
     </Card>
   );
 }

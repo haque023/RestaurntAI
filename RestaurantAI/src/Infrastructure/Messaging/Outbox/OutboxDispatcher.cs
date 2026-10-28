@@ -79,7 +79,7 @@ public sealed class OutboxDispatcher<TContext>(
                     try
                     {
                         await publisher.PublishAsync(
-                            new IntegrationMessage(message.Id, message.Type, message.Payload, message.TenantId, message.CorrelationId, message.OccurredAt),
+                            new IntegrationMessage(message.Id, message.Type, message.Payload, message.TenantId, message.CorrelationId, message.OccurredAt, message.ActorId),
                             ct);
                         message.MarkProcessed(timeProvider.GetUtcNow());
                     }

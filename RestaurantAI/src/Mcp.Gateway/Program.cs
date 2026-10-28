@@ -1,11 +1,14 @@
+using RestaurantAI.Infrastructure.Messaging;
 using RestaurantAI.Infrastructure.Persistence.Redis;
 using RestaurantAI.Mcp.Gateway.Audit;
 using RestaurantAI.Mcp.Gateway.Authorization;
 using RestaurantAI.Mcp.Gateway.Clients;
 using RestaurantAI.Mcp.Gateway.Idempotency;
+using RestaurantAI.Mcp.Gateway.Tools.Discovery;
 using RestaurantAI.Mcp.Gateway.Tools.Menu;
 using RestaurantAI.Mcp.Gateway.Tools.Orders;
 using RestaurantAI.Mcp.Gateway.Tools.Reservations;
+using RestaurantAI.Mcp.Gateway.Tools.Service;
 using RestaurantAI.ServiceDefaults;
 using RestaurantAI.ServiceDefaults.Http;
 
@@ -23,6 +26,9 @@ builder.Services.AddScoped<McpAuthorizationService>();
 builder.Services.AddSingleton<IdempotencyKeyGenerator>();
 builder.Services.AddScoped<IdempotencyService>();
 builder.Services.AddScoped<McpAuditService>();
+builder.Services.AddScoped<DiscoveryApi>();
+builder.Services.AddRabbitMq(builder.Configuration);
+builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddTransient<ForwardCallerContextHandler>();
 builder.Services.AddHttpClient<BusinessApiClient>(client =>
@@ -40,7 +46,10 @@ builder.Services.AddMcpServer()
     .WithTools<CancelOrderTool>()
     .WithTools<CreateReservationTool>()
     .WithTools<GetReservationTool>()
-    .WithTools<CancelReservationTool>();
+    .WithTools<CancelReservationTool>()
+    .WithTools<RequestStaffTool>()
+    .WithTools<SearchRestaurantsTool>()
+    .WithTools<SearchDishesTool>();
 
 var app = builder.Build();
 

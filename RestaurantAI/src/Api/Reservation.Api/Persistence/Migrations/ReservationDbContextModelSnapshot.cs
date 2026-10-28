@@ -76,9 +76,12 @@ namespace RestaurantAI.Reservation.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Infrastructure.Messaging.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
 
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
@@ -129,7 +132,6 @@ namespace RestaurantAI.Reservation.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Reservation.Domain.Reservation", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 

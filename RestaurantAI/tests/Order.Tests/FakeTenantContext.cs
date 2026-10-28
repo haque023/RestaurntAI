@@ -10,6 +10,8 @@ internal sealed class FakeTenantContext : ITenantContext
 
     public Guid? BranchId { get; init; }
 
+    public Guid? TableId { get; init; }
+
     public IReadOnlySet<string> Roles { get; init; } = new HashSet<string>();
 
     public IReadOnlySet<string> Permissions { get; init; } = new HashSet<string>();

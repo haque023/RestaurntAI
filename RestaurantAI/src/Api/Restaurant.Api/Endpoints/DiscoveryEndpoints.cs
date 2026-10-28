@@ -20,6 +20,8 @@ public static class DiscoveryEndpoints
 
         discovery.MapGet("/", SearchAsync);
         discovery.MapGet("/cuisines", CuisinesAsync);
+        discovery.MapGet("/tenants/{tenantId:guid}", GetListedRestaurantAsync);
+        discovery.MapGet("/qr/{token}", ResolveQrAsync);
 
         return app;
     }
@@ -103,6 +105,39 @@ public static class DiscoveryEndpoints
             r.BranchName, r.Address, r.Latitude, r.Longitude, r.TimeZone, r.OpeningHours));
 
         return TypedResults.Ok(DiscoveryRanker.Apply(listings, query, timeProvider.GetUtcNow()));
+    }
+
+    public sealed record ListedBranchDto(Guid BranchId, string BranchName, string Address);
+
+    public sealed record ListedRestaurantDto(Guid TenantId, string RestaurantName, IReadOnlyList<ListedBranchDto> Branches);
+
+    public sealed record QrVenueDto(Guid TenantId, Guid BranchId, Guid TableId, string RestaurantName, string BranchName, string TableLabel);
+
+    /// <summary>A listed restaurant and its listed branches; 404 when the restaurant is not listed.</summary>
+    private static async Task<IResult> GetListedRestaurantAsync(Guid tenantId, RestaurantDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.DiscoveryListings.AsNoTracking().Where(l => l.TenantId == tenantId).OrderBy(l => l.BranchName).ToListAsync(cancellationToken);
+        return rows.Count == 0
+            ? TypedResults.NotFound()
+            : TypedResults.Ok(new ListedRestaurantDto(tenantId, rows[0].RestaurantName, rows.Select(r => new ListedBranchDto(r.BranchId, r.BranchName, r.Address)).ToList()));
+    }
+
+    /// <summary>Resolves a printed table QR code; only works while the restaurant is listed.</summary>
+    private static async Task<IResult> ResolveQrAsync(string token, RestaurantDbContext dbContext, CancellationToken cancellationToken)
+    {
+        if (token.Length is < 8 or > 64)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var venue = await (
+            from qr in dbContext.QrCodes.AsNoTracking()
+            join listing in dbContext.DiscoveryListings.AsNoTracking() on qr.BranchId equals listing.BranchId
+            where qr.Token == token
+            select new QrVenueDto(qr.TenantId, qr.BranchId, qr.TableId, listing.RestaurantName, listing.BranchName, qr.TableLabel))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return venue is null ? TypedResults.NotFound() : TypedResults.Ok(venue);
     }
 
     private static async Task<IResult> CuisinesAsync(RestaurantDbContext dbContext, CancellationToken cancellationToken)

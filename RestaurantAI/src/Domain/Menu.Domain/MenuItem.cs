@@ -79,6 +79,34 @@ public sealed class MenuItem : AggregateRoot<Guid>, IBranchScoped
         Raise(new MenuItemChanged(Id, TenantId, BranchId));
     }
 
+    public void UpdateDetails(
+        string category,
+        string name,
+        string description,
+        Money price,
+        IEnumerable<string> dietaryTags,
+        IEnumerable<string> ingredients)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new DomainException("menu.name_required", "Item name is required.");
+        }
+
+        if (price.Amount < 0)
+        {
+            throw new DomainException("menu.invalid_price", "Price cannot be negative.");
+        }
+
+        Category = category.Trim();
+        Name = name.Trim();
+        Description = description.Trim();
+        Price = price.Amount;
+        Currency = price.Currency;
+        DietaryTags = dietaryTags.Select(t => t.Trim().ToLowerInvariant()).Where(t => t.Length > 0).Distinct().ToList();
+        Ingredients = ingredients.Select(i => i.Trim()).Where(i => i.Length > 0).ToList();
+        Raise(new MenuItemChanged(Id, TenantId, BranchId));
+    }
+
     public void SetAvailability(bool isAvailable)
     {
         if (IsAvailable == isAvailable)

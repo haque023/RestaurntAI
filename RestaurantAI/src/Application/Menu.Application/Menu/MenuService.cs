@@ -33,6 +33,44 @@ public sealed class MenuService(IMenuItemRepository items, ITenantContext tenant
         return item;
     }
 
+    public async Task<Result<MenuItem>> UpdateAsync(Guid id, UpdateMenuItemCommand command, CancellationToken cancellationToken)
+    {
+        var item = await items.GetAsync(id, cancellationToken);
+        if (item is null || !CanAccessBranch(item.BranchId))
+        {
+            return Error.NotFound("menu.item_not_found", "Menu item not found.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.Name) || command.Currency?.Length != 3)
+        {
+            return Error.Validation("menu.invalid_item", "Name and a 3-letter ISO currency are required.");
+        }
+
+        item.UpdateDetails(
+            command.Category ?? string.Empty,
+            command.Name,
+            command.Description ?? string.Empty,
+            new Money(command.Price, command.Currency.ToUpperInvariant()),
+            command.DietaryTags ?? [],
+            command.Ingredients ?? []);
+        return item;
+    }
+
+    public async Task<Result<MenuItem>> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var item = await items.GetAsync(id, cancellationToken);
+        if (item is null || !CanAccessBranch(item.BranchId))
+        {
+            return Error.NotFound("menu.item_not_found", "Menu item not found.");
+        }
+
+        items.Remove(item);
+        return item;
+    }
+
+    private bool CanAccessBranch(Guid branchId) =>
+        tenant.IsPlatformAdministrator || tenant.BranchId is null || tenant.BranchId == branchId;
+
     public async Task<Result<MenuItem>> SetAvailabilityAsync(Guid id, bool isAvailable, CancellationToken cancellationToken)
     {
         var item = await items.GetAsync(id, cancellationToken);

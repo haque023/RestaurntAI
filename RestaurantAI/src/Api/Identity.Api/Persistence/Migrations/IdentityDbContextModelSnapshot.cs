@@ -26,9 +26,14 @@ namespace RestaurantAI.Identity.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Identity.Domain.UserAccount", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
@@ -48,9 +53,32 @@ namespace RestaurantAI.Identity.Api.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("external_subject");
 
+                    b.Property<int>("FailedLogins")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_logins");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
                     b.Property<bool>("IsPlatformAdministrator")
                         .HasColumnType("boolean")
                         .HasColumnName("is_platform_administrator");
+
+                    b.Property<DateTimeOffset?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_login_at");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_until");
+
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("password_hash");
 
                     b.HasKey("Id")
                         .HasName("pk_user_accounts");
@@ -69,9 +97,12 @@ namespace RestaurantAI.Identity.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Infrastructure.Messaging.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
 
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
@@ -134,6 +165,10 @@ namespace RestaurantAI.Identity.Api.Persistence.Migrations
                                 .IsRequired();
 
                             b1.Property<Guid>("TenantId");
+
+                            b1.Property<string>("TenantName")
+                                .IsRequired()
+                                .HasMaxLength(200);
 
                             b1.HasKey("UserAccountId", "__synthesizedOrdinal")
                                 .HasName("pk_user_accounts");

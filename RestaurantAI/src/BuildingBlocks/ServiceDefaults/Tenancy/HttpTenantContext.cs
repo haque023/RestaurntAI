@@ -17,6 +17,8 @@ internal sealed class HttpTenantContext(IHttpContextAccessor accessor) : ITenant
 
     public Guid? BranchId => ParseGuid(PlatformClaims.BranchId);
 
+    public Guid? TableId => ParseGuid(PlatformClaims.TableId);
+
     public IReadOnlySet<string> Roles => User.FindAll(PlatformClaims.Role).Select(c => c.Value).ToHashSet();
 
     public IReadOnlySet<string> Permissions => User.FindAll(PlatformClaims.Permission).Select(c => c.Value).ToHashSet();

@@ -26,9 +26,12 @@ namespace RestaurantAI.Loyalty.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Infrastructure.Messaging.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
 
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
@@ -79,7 +82,6 @@ namespace RestaurantAI.Loyalty.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Loyalty.Domain.LoyaltyAccount", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -110,7 +112,6 @@ namespace RestaurantAI.Loyalty.Api.Persistence.Migrations
                     b.OwnsMany("RestaurantAI.Loyalty.Domain.LoyaltyTransaction", "Transactions", b1 =>
                         {
                             b1.Property<Guid>("Id")
-                                .ValueGeneratedOnAdd()
                                 .HasColumnType("uuid")
                                 .HasColumnName("id");
 

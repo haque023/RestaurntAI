@@ -1,7 +1,9 @@
 using RestaurantAI.Infrastructure.Messaging;
 using RestaurantAI.Infrastructure.Persistence.PostgreSQL;
 using RestaurantAI.Identity.Api.Endpoints;
+using RestaurantAI.Identity.Api.Integration;
 using RestaurantAI.Identity.Api.Persistence;
+using RestaurantAI.Identity.Api.Security;
 using RestaurantAI.Identity.Application;
 using RestaurantAI.ServiceDefaults;
 
@@ -17,7 +19,11 @@ builder.Services.AddPostgresDbContext<IdentityDbContext>(
     configure: (provider, options) => options.UseOutbox(provider));
 builder.Services.AddRabbitMq(builder.Configuration);
 builder.Services.AddOutbox<IdentityDbContext>(builder.Configuration, module: "identity");
-builder.Services.AddSingleton<RestaurantAI.Identity.Api.Endpoints.DevelopmentTokenIssuer>();
+builder.Services.AddSingleton<PasswordHasher>();
+builder.Services.AddSingleton<PlatformTokenIssuer>();
+builder.Services.AddHttpClient<PlatformServicesClient>(client =>
+        client.BaseAddress = new Uri(builder.Configuration["Services:Gateway"] ?? "http://localhost:5080"))
+    .AddStandardResilienceHandler();
 
 var app = builder.Build();
 
@@ -34,8 +40,12 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Databas
     await app.Services.MigrateDatabaseAsync<IdentityDbContext>();
 }
 
+await BootstrapAdministrator.EnsureAsync(app.Services);
+
 app.MapDefaultEndpoints();
 app.MapIdentityEndpoints();
+app.MapStaffEndpoints();
+app.MapAdminIdentityEndpoints();
 
 await app.RunAsync();
 

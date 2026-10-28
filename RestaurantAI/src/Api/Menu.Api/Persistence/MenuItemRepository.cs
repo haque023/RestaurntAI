@@ -8,6 +8,8 @@ internal sealed class MenuItemRepository(MenuDbContext dbContext) : IMenuItemRep
 {
     public void Add(MenuItem item) => dbContext.MenuItems.Add(item);
 
+    public void Remove(MenuItem item) => dbContext.MenuItems.Remove(item);
+
     public Task<MenuItem?> GetAsync(Guid id, CancellationToken cancellationToken) =>
         dbContext.MenuItems.SingleOrDefaultAsync(i => i.Id == id, cancellationToken);
 

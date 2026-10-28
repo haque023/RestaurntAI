@@ -36,6 +36,8 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Databas
 app.MapDefaultEndpoints();
 app.MapRestaurantEndpoints();
 app.MapDiscoveryEndpoints();
+app.MapTableEndpoints();
+app.MapAdminRestaurantEndpoints();
 
 await app.RunAsync();
 

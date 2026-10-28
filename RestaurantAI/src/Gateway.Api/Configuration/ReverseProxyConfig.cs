@@ -14,6 +14,9 @@ public sealed class GatewayRateLimitOptions
 
     public int AnonymousPermitsPerMinute { get; set; } = 60;
 
+    /// <summary>AI calls are expensive; each user gets their own small bucket on top of tenant quotas.</summary>
+    public int AiPermitsPerUserPerMinute { get; set; } = 20;
+
     public int QueueLimit { get; set; }
 }
 
@@ -23,6 +26,9 @@ public static class ReverseProxyConfig
 
     /// <summary>Route policy: token bucket per tenant (or per client IP for anonymous calls).</summary>
     public const string PerTenantRateLimit = "per-tenant";
+
+    /// <summary>Route policy for AI endpoints: token bucket per user (or per client IP when anonymous).</summary>
+    public const string AiPerUserRateLimit = "ai-per-user";
 
     // Headers that only the platform may set; stripped from client requests.
     private static readonly string[] ReservedHeaders = ["X-Tenant-Id", "X-Branch-Id", "X-User-Id"];
@@ -78,6 +84,20 @@ public static class ReverseProxyConfig
 
                 return ValueTask.CompletedTask;
             };
+
+            options.AddPolicy(AiPerUserRateLimit, httpContext =>
+            {
+                var userId = httpContext.User.FindFirstValue(PlatformClaims.Subject);
+                var key = userId is not null ? $"ai-user:{userId}" : $"ai-ip:{httpContext.Connection.RemoteIpAddress}";
+                return RateLimitPartition.GetTokenBucketLimiter(key, _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = limits.AiPermitsPerUserPerMinute,
+                    TokensPerPeriod = limits.AiPermitsPerUserPerMinute,
+                    ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true,
+                });
+            });
 
             options.AddPolicy(PerTenantRateLimit, httpContext =>
             {

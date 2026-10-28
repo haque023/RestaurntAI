@@ -36,7 +36,7 @@ public sealed class ContextAssemblyService(
         // Retrieval runs alongside the memory reads; the two memory reads share one DbContext,
         // which does not allow concurrent operations, so they run one after the other.
         var knowledgeTask = retriever.RetrieveAsync(request.TenantId, request.BranchId, request.UserMessage, RetrievalTopK, cancellationToken);
-        var history = await memory.GetRecentTurnsAsync(request.TenantId, request.ConversationId, MaxHistoryTurns, cancellationToken);
+        var history = await memory.GetRecentTurnsAsync(request.TenantId, request.UserId, request.ConversationId, MaxHistoryTurns, cancellationToken);
         var facts = await memory.GetFactsAsync(request.TenantId, request.UserId, cancellationToken);
         var knowledge = await knowledgeTask;
 

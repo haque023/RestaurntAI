@@ -24,4 +24,14 @@ public static class PlatformPermissions
 
     public const string RestaurantManage = "restaurant.manage";
     public const string ConsumerProfile = "consumer.profile";
+
+    public const string StaffManage = "staff.manage";
+    public const string AnalyticsRead = "analytics.read";
+    public const string AiManage = "ai.manage";
+
+    /// <summary>Ask staff for help (call waiter, AI escalation).</summary>
+    public const string ServiceRequest = "service.request";
+
+    /// <summary>Cross-restaurant discovery through the AI assistant.</summary>
+    public const string DiscoverySearch = "discovery.search";
 }

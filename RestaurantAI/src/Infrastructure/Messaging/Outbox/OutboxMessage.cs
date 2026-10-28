@@ -26,6 +26,9 @@ public sealed class OutboxMessage
 
     public string? CorrelationId { get; private set; }
 
+    /// <summary>The user whose request produced the event (for the audit trail).</summary>
+    public Guid? ActorId { get; private set; }
+
     public DateTimeOffset OccurredAt { get; private set; }
 
     public DateTimeOffset? ProcessedAt { get; private set; }
@@ -34,8 +37,9 @@ public sealed class OutboxMessage
 
     public string? LastError { get; private set; }
 
-    public static OutboxMessage From(IDomainEvent domainEvent, string module, Guid? tenantId, string? correlationId) => new()
+    public static OutboxMessage From(IDomainEvent domainEvent, string module, Guid? tenantId, string? correlationId, Guid? actorId = null) => new()
     {
+        ActorId = actorId,
         Id = domainEvent.EventId,
         Type = $"{module}.{domainEvent.GetType().Name}",
         Payload = JsonSerializer.Serialize(domainEvent, domainEvent.GetType(), SerializerOptions),

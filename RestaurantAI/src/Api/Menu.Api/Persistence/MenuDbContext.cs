@@ -49,6 +49,12 @@ public sealed class MenuDbContext(DbContextOptions<MenuDbContext> options, ITena
             }
         }
 
+        var deleted = ChangeTracker.Entries<MenuItem>().Where(e => e.State == EntityState.Deleted).Select(e => e.Entity.Id).ToList();
+        if (deleted.Count > 0)
+        {
+            PublicMenuItems.RemoveRange(await PublicMenuItems.Where(p => deleted.Contains(p.MenuItemId)).ToListAsync(cancellationToken));
+        }
+
         return await base.SaveChangesAsync(cancellationToken);
     }
 }

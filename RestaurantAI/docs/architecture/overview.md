@@ -89,12 +89,26 @@ service needed a home that is neither a domain nor an infrastructure adapter.
   from business services; RAG content for the same entity is evicted when live data is present.
 - **Edge-ready from day 1**: forwarded headers honoured, no edge-specific code in services.
 
+- **Local accounts, role-derived permissions**: Identity issues JWTs whose permissions come from
+  a server-side role map (`PlatformRolePermissions`); clients never choose permissions. Guests who
+  scan a table QR get a short-lived guest identity bound to restaurant, branch and table.
+- **QR codes are opaque random tokens** resolved through a public read model, so tables cannot be
+  enumerated and a code can be rotated without reprinting the others.
+- **Audit log from the event stream**: every domain event (with acting user and tenant) and every
+  MCP tool execution flows through RabbitMQ into `platform.audit_events` (Admin.Api, idempotent consumer).
+- **Two agents**: the restaurant AI waiter (tenant-scoped tools, staff hand-over via `request_staff`)
+  and the platform discovery assistant (`search_restaurants`, `search_dishes` over listed restaurants,
+  location-aware); discovery chat history lives in Redis because it belongs to no tenant.
+
 ## Not yet implemented
 
-- RabbitMQ consumers / background workers (Notifications, Loyalty, Analytics, Memory, Audit).
-- Payments, Kitchen/KDS, Tables & QR, CRM, Promotions, Subscriptions modules.
-- Production identity provider integration (Entra ID / External ID) — dev tokens only today.
-- Embeddings for RAG: Claude has no embeddings API, so retrieval is off (`NoKnowledgeRetriever`)
-  until an embedding provider is configured; the waiter answers from live MCP tool data.
-- Streaming AI replies (turns currently return when complete, typically 5–10 s).
-- CI/CD pipeline and infrastructure-as-code.
+- Payments (provider integration, refunds, reconciliation) and subscription billing/invoices;
+  plans are assigned by administrators today.
+- POS/KDS integrations, notifications (email/SMS/push), CRM segments, promotions and campaigns.
+- Menu variants and add-ons, menu images (Blob storage), multilingual menu content.
+- External identity provider (Entra ID / External ID), refresh tokens and password reset;
+  disabling a user blocks new sign-ins but existing tokens stay valid until they expire.
+- Embeddings for RAG: Claude has no embeddings API, so retrieval is off (`NoKnowledgeRetriever`);
+  the waiter uses live MCP tool data plus the owner's AI knowledge text.
+- Streaming AI replies (turns return when complete, typically 5–10 s).
+- Restaurant mobile app and offline mode; CI/CD pipeline and infrastructure-as-code.

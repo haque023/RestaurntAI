@@ -7,7 +7,8 @@ public sealed record IntegrationMessage(
     string Payload,
     Guid? TenantId,
     string? CorrelationId,
-    DateTimeOffset OccurredAt);
+    DateTimeOffset OccurredAt,
+    Guid? ActorId = null);
 
 public interface IEventPublisher
 {

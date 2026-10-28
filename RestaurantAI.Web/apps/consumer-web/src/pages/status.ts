@@ -3,13 +3,13 @@ import type { BadgeTone } from "@restaurant-ai/ui";
 
 export const ORDER_STEPS: OrderStatus[] = ["Placed", "Accepted", "Preparing", "Ready", "Served", "Completed"];
 
-export const isFinalOrderStatus = (status: OrderStatus) => status === "Completed" || status === "Cancelled";
+export const isFinalOrderStatus = (status: OrderStatus) => status === "Completed" || status === "Cancelled" || status === "Rejected";
 
 /** Mirrors the backend rule: only orders not yet in preparation can be cancelled. */
 export const canCancelOrder = (status: OrderStatus) => status === "Placed" || status === "Accepted";
 
 export function orderTone(status: OrderStatus): BadgeTone {
-  if (status === "Cancelled") return "danger";
+  if (status === "Cancelled" || status === "Rejected") return "danger";
   if (status === "Completed" || status === "Ready" || status === "Served") return "success";
   return "warning";
 }

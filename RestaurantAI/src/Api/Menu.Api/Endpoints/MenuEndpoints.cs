@@ -20,6 +20,8 @@ public static class MenuEndpoints
         menu.MapGet("/items/{itemId:guid}/availability", GetAvailabilityAsync).RequirePermission(PlatformPermissions.MenuRead);
         menu.MapPost("/branches/{branchId:guid}/items", CreateAsync).RequirePermission(PlatformPermissions.MenuWrite);
         menu.MapPut("/items/{itemId:guid}/availability", SetAvailabilityAsync).RequirePermission(PlatformPermissions.MenuWrite);
+        menu.MapPut("/items/{itemId:guid}", UpdateAsync).RequirePermission(PlatformPermissions.MenuWrite);
+        menu.MapDelete("/items/{itemId:guid}", DeleteAsync).RequirePermission(PlatformPermissions.MenuWrite);
 
         return app;
     }
@@ -86,6 +88,30 @@ public static class MenuEndpoints
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return TypedResults.Created($"/api/menu/items/{result.Value.Id}", MenuItemResponse.From(result.Value));
+    }
+
+    private static async Task<IResult> UpdateAsync(Guid itemId, UpdateMenuItemCommand command, MenuService service, MenuDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var result = await service.UpdateAsync(itemId, command, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return result.Error.ToProblem();
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return TypedResults.Ok(MenuItemResponse.From(result.Value));
+    }
+
+    private static async Task<IResult> DeleteAsync(Guid itemId, MenuService service, MenuDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var result = await service.DeleteAsync(itemId, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return result.Error.ToProblem();
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return TypedResults.NoContent();
     }
 
     private static async Task<IResult> SetAvailabilityAsync(

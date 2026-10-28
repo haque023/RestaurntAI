@@ -4,7 +4,8 @@ using RestaurantAI.SharedKernel.Tenancy;
 namespace RestaurantAI.Mcp.Gateway.Authorization;
 
 /// <summary>Declares what each MCP tool requires. Unknown tools are denied.</summary>
-public sealed record ToolDefinition(string Name, string RequiredPermission, bool Mutates, bool RequiresBranch);
+/// <param name="RequiresTenant">False for platform-level tools (cross-restaurant discovery) that only need a signed-in user.</param>
+public sealed record ToolDefinition(string Name, string RequiredPermission, bool Mutates, bool RequiresBranch, bool RequiresTenant = true);
 
 public sealed record ToolAuthorizationResult(bool Allowed, string? Reason = null)
 {
@@ -25,6 +26,9 @@ public static class McpToolNames
     public const string CreateReservation = "create_reservation";
     public const string GetReservation = "get_reservation";
     public const string CancelReservation = "cancel_reservation";
+    public const string SearchRestaurants = "search_restaurants";
+    public const string SearchDishes = "search_dishes";
+    public const string RequestStaff = "request_staff";
 }
 
 public sealed class ToolPermissionService
@@ -40,6 +44,9 @@ public sealed class ToolPermissionService
         new(McpToolNames.CreateReservation, PlatformPermissions.ReservationsCreate, Mutates: true, RequiresBranch: true),
         new(McpToolNames.GetReservation, PlatformPermissions.ReservationsRead, Mutates: false, RequiresBranch: false),
         new(McpToolNames.CancelReservation, PlatformPermissions.ReservationsCancel, Mutates: true, RequiresBranch: false),
+        new(McpToolNames.RequestStaff, PlatformPermissions.ServiceRequest, Mutates: true, RequiresBranch: true),
+        new(McpToolNames.SearchRestaurants, PlatformPermissions.DiscoverySearch, Mutates: false, RequiresBranch: false, RequiresTenant: false),
+        new(McpToolNames.SearchDishes, PlatformPermissions.DiscoverySearch, Mutates: false, RequiresBranch: false, RequiresTenant: false),
     }.ToDictionary(d => d.Name, StringComparer.Ordinal);
 
     public ToolDefinition? Find(string toolName) => Definitions.GetValueOrDefault(toolName);

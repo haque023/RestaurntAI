@@ -8,7 +8,9 @@ function token(payload: Record<string, unknown>): string {
 
 describe("parseToken", () => {
   it("reads platform claims, normalizing single values to lists", () => {
-    const user = parseToken(token({ sub: "u1", tenant_id: "t1", role: "customer", permission: ["menu.read", "orders.create"], exp: 2_000_000_000 }));
+    const user = parseToken(
+      token({ sub: "u1", tenant_id: "t1", role: "customer", permission: ["menu.read", "orders.create"], exp: 2_000_000_000, email: "a@b.c", name: "Ann" }),
+    );
 
     expect(user).toEqual({
       userId: "u1",
@@ -18,7 +20,14 @@ describe("parseToken", () => {
       roles: ["customer"],
       permissions: ["menu.read", "orders.create"],
       expiresAt: 2_000_000_000_000,
+      email: "a@b.c",
+      displayName: "Ann",
+      isGuest: false,
     });
+  });
+
+  it("recognises anonymous QR guests", () => {
+    expect(parseToken(token({ sub: "g1", guest: "true" }))?.isGuest).toBe(true);
   });
 
   it("returns null for malformed tokens or tokens without a subject", () => {

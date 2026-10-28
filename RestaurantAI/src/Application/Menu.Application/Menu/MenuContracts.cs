@@ -14,6 +14,15 @@ public sealed record CreateMenuItemCommand(
     IReadOnlyCollection<string> DietaryTags,
     IReadOnlyCollection<string> Ingredients);
 
+public sealed record UpdateMenuItemCommand(
+    string Category,
+    string Name,
+    string Description,
+    decimal Price,
+    string Currency,
+    IReadOnlyCollection<string> DietaryTags,
+    IReadOnlyCollection<string> Ingredients);
+
 public sealed record MenuItemResponse(
     Guid Id,
     Guid BranchId,
@@ -44,6 +53,8 @@ public sealed record MenuAvailabilityResponse(Guid MenuItemId, bool IsAvailable,
 public interface IMenuItemRepository
 {
     void Add(MenuItem item);
+
+    void Remove(MenuItem item);
 
     Task<MenuItem?> GetAsync(Guid id, CancellationToken cancellationToken);
 

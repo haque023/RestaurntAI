@@ -16,7 +16,8 @@ public sealed record AgentTurnRequest(
     Guid ConversationId,
     string Message,
     string UserAccessToken,
-    IReadOnlyList<ContextItem>? LiveData = null);
+    IReadOnlyList<ContextItem>? LiveData = null,
+    AgentProfile? Agent = null);
 
 public enum AgentTurnOutcome
 {
@@ -25,7 +26,17 @@ public enum AgentTurnOutcome
     Truncated,
 }
 
-public sealed record AgentTurnResponse(string Reply, Guid TurnId, AgentTurnOutcome Outcome, int ContextTokens, int EvictedItems);
+public sealed record AgentTurnResponse(
+    string Reply,
+    Guid TurnId,
+    AgentTurnOutcome Outcome,
+    int ContextTokens,
+    int EvictedItems,
+    string Agent,
+    long InputTokens,
+    long OutputTokens,
+    int ToolCalls,
+    int LatencyMs);
 
 /// <summary>
 /// Runs one conversational turn: assemble context → call Claude with the MCP tools allowed for
@@ -46,8 +57,9 @@ public sealed class AgentConversationService(
 
     public async Task<AgentTurnResponse> RunTurnAsync(AgentTurnRequest request, CancellationToken cancellationToken)
     {
-        var agent = AgentCatalog.ForRoles(request.Roles);
+        var agent = request.Agent ?? AgentCatalog.ForRoles(request.Roles);
         var turnId = Guid.CreateVersion7();
+        var started = timeProvider.GetTimestamp();
 
         var context = await contextAssembly.AssembleAsync(
             new ContextRequest(request.TenantId, request.BranchId, request.UserId, request.ConversationId, request.Message, agent.Instructions, request.LiveData ?? []),
@@ -77,7 +89,18 @@ public sealed class AgentConversationService(
         await memory.AppendTurnAsync(NewTurn(request, ConversationRole.User, request.Message, now), cancellationToken);
         await memory.AppendTurnAsync(NewTurn(request, ConversationRole.Assistant, reply, now), cancellationToken);
 
-        return new AgentTurnResponse(reply, turnId, outcome, context.TokensUsed, context.Evicted.Count);
+        var toolCalls = response.Messages.SelectMany(m => m.Contents).OfType<FunctionCallContent>().Count();
+        return new AgentTurnResponse(
+            reply,
+            turnId,
+            outcome,
+            context.TokensUsed,
+            context.Evicted.Count,
+            agent.Name,
+            response.Usage?.InputTokenCount ?? 0,
+            response.Usage?.OutputTokenCount ?? 0,
+            toolCalls,
+            (int)timeProvider.GetElapsedTime(started).TotalMilliseconds);
     }
 
     private static ConversationTurn NewTurn(AgentTurnRequest request, ConversationRole role, string content, DateTimeOffset at) => new()

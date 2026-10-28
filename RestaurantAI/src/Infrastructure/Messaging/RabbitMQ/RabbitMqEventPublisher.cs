@@ -31,6 +31,7 @@ public sealed class RabbitMqEventPublisher(IOptions<RabbitMqOptions> options) : 
             {
                 ["tenant_id"] = message.TenantId?.ToString(),
                 [PlatformHeaders.CorrelationId] = message.CorrelationId,
+                ["actor_id"] = message.ActorId?.ToString(),
             },
         };
 

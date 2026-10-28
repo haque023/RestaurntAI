@@ -56,9 +56,45 @@ public interface IMemoryStore
 {
     Task AppendTurnAsync(ConversationTurn turn, CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<ConversationTurn>> GetRecentTurnsAsync(Guid tenantId, Guid conversationId, int maxTurns, CancellationToken cancellationToken);
+    /// <summary>Recent turns of one user's conversation. <see cref="Guid.Empty"/> tenant = platform-level conversation.</summary>
+    Task<IReadOnlyList<ConversationTurn>> GetRecentTurnsAsync(Guid tenantId, Guid userId, Guid conversationId, int maxTurns, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<MemoryFact>> GetFactsAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken);
 
     Task UpsertFactAsync(MemoryFact fact, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// AI telemetry for one agent turn: who, which agent, tokens, tool calls, outcome and latency.
+/// Not tenant-owned (cross-restaurant discovery turns have no tenant) and holds no message text,
+/// so it is readable for quotas and platform analytics without exposing conversations.
+/// </summary>
+public sealed class AiUsageRecord
+{
+    public Guid Id { get; set; }
+
+    /// <summary>Null for platform-level agents such as discovery.</summary>
+    public Guid? TenantId { get; set; }
+
+    public Guid UserId { get; set; }
+
+    public Guid ConversationId { get; set; }
+
+    public Guid TurnId { get; set; }
+
+    public string Agent { get; set; } = string.Empty;
+
+    public string Model { get; set; } = string.Empty;
+
+    public long InputTokens { get; set; }
+
+    public long OutputTokens { get; set; }
+
+    public int ToolCalls { get; set; }
+
+    public string Outcome { get; set; } = string.Empty;
+
+    public int LatencyMs { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
 }

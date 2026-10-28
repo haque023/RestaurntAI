@@ -41,6 +41,7 @@ docs/                 architecture, api, mcp, security, operations
 
 ## Documentation
 
+- [MVP 1 scope and demo accounts](docs/mvp1.md)
 - [Architecture](docs/architecture/overview.md)
 - [API](docs/api/README.md)
 - [MCP Gateway](docs/mcp/README.md)

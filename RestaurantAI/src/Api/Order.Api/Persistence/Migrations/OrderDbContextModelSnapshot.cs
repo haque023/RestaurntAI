@@ -75,9 +75,12 @@ namespace RestaurantAI.Order.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Infrastructure.Messaging.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
 
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
@@ -128,7 +131,6 @@ namespace RestaurantAI.Order.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Order.Domain.Order", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -186,6 +188,12 @@ namespace RestaurantAI.Order.Api.Persistence.Migrations
                         .HasColumnType("numeric(12,2)")
                         .HasColumnName("total");
 
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -195,6 +203,9 @@ namespace RestaurantAI.Order.Api.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_orders");
 
+                    b.HasIndex("TenantId", "BranchId", "PlacedAt")
+                        .HasDatabaseName("ix_orders_tenant_id_branch_id_placed_at");
+
                     b.HasIndex("TenantId", "BranchId", "Status")
                         .HasDatabaseName("ix_orders_tenant_id_branch_id_status");
 
@@ -202,6 +213,67 @@ namespace RestaurantAI.Order.Api.Persistence.Migrations
                         .HasDatabaseName("ix_orders_tenant_id_customer_id_placed_at");
 
                     b.ToTable("orders", "orders");
+                });
+
+            modelBuilder.Entity("RestaurantAI.Order.Domain.ServiceRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("branch_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<Guid?>("HandledBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("handled_by");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TableId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("table_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_service_requests");
+
+                    b.HasIndex("TenantId", "BranchId", "Status")
+                        .HasDatabaseName("ix_service_requests_tenant_id_branch_id_status");
+
+                    b.ToTable("service_requests", "orders");
                 });
 
             modelBuilder.Entity("RestaurantAI.Order.Domain.Order", b =>
@@ -241,6 +313,36 @@ namespace RestaurantAI.Order.Api.Persistence.Migrations
                                 .HasForeignKey("OrderId")
                                 .HasConstraintName("fk_orders_orders_order_id");
                         });
+
+                    b.OwnsMany("RestaurantAI.Order.Domain.OrderStatusChange", "History", b1 =>
+                        {
+                            b1.Property<Guid>("OrderId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<DateTimeOffset>("At");
+
+                            b1.Property<Guid?>("By");
+
+                            b1.Property<string>("Status")
+                                .IsRequired();
+
+                            b1.HasKey("OrderId", "__synthesizedOrdinal")
+                                .HasName("pk_orders");
+
+                            b1.ToTable("orders", "orders");
+
+                            b1
+                                .ToJson("history")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId")
+                                .HasConstraintName("fk_orders_orders_order_id");
+                        });
+
+                    b.Navigation("History");
 
                     b.Navigation("Lines");
                 });

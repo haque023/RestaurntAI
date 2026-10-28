@@ -56,10 +56,13 @@ public sealed class OrderService(
             lines.Add(OrderLine.Create(menuItem.Id, menuItem.Name, item.Quantity, new Money(menuItem.Price, menuItem.Currency), item.Notes));
         }
 
+        // Guests are seated only by their QR session; staff may place orders for any table.
+        var tableId = tenant.HasPermission(PlatformPermissions.OrdersManage) ? command.TableId ?? tenant.TableId : tenant.TableId;
+
         var order = Domain.Order.Place(
             tenantId,
             command.BranchId,
-            command.TableId,
+            tableId,
             userId,
             command.Channel,
             lines,
@@ -95,7 +98,44 @@ public sealed class OrderService(
             return Error.Conflict("order.not_cancellable", $"An order in status {order.Status} cannot be cancelled.");
         }
 
-        order.Cancel(command.Reason);
+        order.Cancel(command.Reason, timeProvider.GetUtcNow(), tenant.UserId);
+        return order;
+    }
+
+    /// <summary>Staff moves an order along the kitchen flow, or rejects it before acceptance.</summary>
+    public async Task<Result<Domain.Order>> ChangeStatusAsync(Guid orderId, ChangeOrderStatusCommand command, CancellationToken cancellationToken)
+    {
+        if (!tenant.HasPermission(PlatformPermissions.OrdersManage))
+        {
+            return Error.Forbidden("permission.denied", "Only restaurant staff can change order status.");
+        }
+
+        var found = await GetAsync(orderId, cancellationToken);
+        if (!found.IsSuccess)
+        {
+            return found;
+        }
+
+        var order = found.Value;
+        if (!order.CanTransitionTo(command.Status))
+        {
+            return Error.Conflict("order.invalid_transition", $"An order in status {order.Status} cannot move to {command.Status}.");
+        }
+
+        var now = timeProvider.GetUtcNow();
+        switch (command.Status)
+        {
+            case OrderStatus.Rejected:
+                order.Reject(command.Reason ?? string.Empty, now, tenant.UserId!.Value);
+                break;
+            case OrderStatus.Cancelled:
+                order.Cancel(string.IsNullOrWhiteSpace(command.Reason) ? "Cancelled by the restaurant." : command.Reason.Trim(), now, tenant.UserId);
+                break;
+            default:
+                order.Advance(command.Status, now, tenant.UserId);
+                break;
+        }
+
         return order;
     }
 

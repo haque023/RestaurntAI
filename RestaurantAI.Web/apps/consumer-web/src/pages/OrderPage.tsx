@@ -39,7 +39,13 @@ export function OrderPage() {
         actions={<Badge tone={orderTone(data.status)}>{data.status}</Badge>}
       />
 
-      {data.status !== "Cancelled" && (
+      {(data.status === "Cancelled" || data.status === "Rejected") && data.cancellationReason && (
+        <div className="alert alert-error" role="status">
+          {data.status === "Rejected" ? "The restaurant could not accept this order" : "Cancelled"}: {data.cancellationReason}
+        </div>
+      )}
+
+      {data.status !== "Cancelled" && data.status !== "Rejected" && (
         <Card>
           <ol className="row" aria-label="Order progress" style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {ORDER_STEPS.map((step, index) => (

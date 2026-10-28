@@ -27,9 +27,12 @@ namespace RestaurantAI.Menu.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Infrastructure.Messaging.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
 
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
@@ -80,7 +83,6 @@ namespace RestaurantAI.Menu.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Menu.Api.Persistence.PublicMenuItemRow", b =>
                 {
                     b.Property<Guid>("MenuItemId")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("menu_item_id");
 
@@ -158,7 +160,6 @@ namespace RestaurantAI.Menu.Api.Persistence.Migrations
             modelBuilder.Entity("RestaurantAI.Menu.Domain.MenuItem", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 

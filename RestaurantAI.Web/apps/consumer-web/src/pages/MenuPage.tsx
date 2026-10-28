@@ -3,17 +3,20 @@ import { useApi } from "@restaurant-ai/auth";
 import { Badge, Button, Card, EmptyState, ErrorAlert, Field, formatMoney, PageHeader, Spinner } from "@restaurant-ai/ui";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useDeferredValue, useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { cartItemCount } from "../cart/cart";
 import { useCart } from "../cart/useCart";
+import { useVenueTable } from "../session/useVenueTable";
 import { venuePath } from "../venue";
+import { useVenueInfo } from "../session/useVenueInfo";
+import { StaffCall } from "../waiter/StaffCall";
 import { WaiterChat } from "../waiter/WaiterChat";
 
 const DIETARY_FILTERS = ["vegan", "vegetarian", "gluten-free", "spicy", "halal"];
 
 export function MenuPage() {
   const { tenantId = "", branchId = "" } = useParams();
-  const [search] = useSearchParams();
+  const tableId = useVenueTable();
   const api = useApi();
   const { cart, dispatch } = useCart();
 
@@ -32,9 +35,10 @@ export function MenuPage() {
     placeholderData: keepPreviousData,
   });
 
+  const venue = useVenueInfo(branchId);
   const byCategory = useMemo(() => groupByCategory(menu.data ?? []), [menu.data]);
   const count = cartItemCount(cart);
-  const cartLink = venuePath({ tenantId, branchId, tableId: search.get("table") }, "cart");
+  const cartLink = venuePath({ tenantId, branchId, tableId }, "cart");
 
   function toggle(tag: string) {
     setDietary((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]));
@@ -43,16 +47,26 @@ export function MenuPage() {
   return (
     <>
       <PageHeader
-        title="Menu"
-        description="Live prices and availability from the kitchen."
+        title={venue.data?.restaurantName ?? "Menu"}
+        description={
+          venue.data
+            ? `${venue.data.branchName} · ${venue.data.address}${venue.data.isOpenNow ? "" : " · closed now"}${tableId ? " · you're at a table" : ""}`
+            : "Live prices and availability from the kitchen."
+        }
         actions={
-          <Link className="btn btn-primary" to={cartLink}>
-            Cart ({count})
-          </Link>
+          <>
+            <Link className="btn" to={venuePath({ tenantId, branchId, tableId }, "orders")}>
+              My orders
+            </Link>
+            <Link className="btn btn-primary" to={cartLink}>
+              Cart ({count})
+            </Link>
+          </>
         }
       />
 
-      <WaiterChat branchId={branchId} tableId={search.get("table")} />
+      {tableId && <StaffCall />}
+      <WaiterChat branchId={branchId} tableId={tableId} />
 
       <Card>
         <div className="form-grid">

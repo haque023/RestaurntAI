@@ -14,8 +14,19 @@ public static class DishDiscoveryEndpoints
         return app;
     }
 
-    private static async Task<IResult> SearchAsync(string? q, string? diets, decimal? maxPrice, int? limit, MenuDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> SearchAsync(string? q, string? diets, decimal? maxPrice, string? branchIds, int? limit, MenuDbContext dbContext, CancellationToken cancellationToken)
     {
+        var branches = new List<Guid>();
+        foreach (var part in (branchIds ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!Guid.TryParse(part, out var id) || branches.Count >= 200)
+            {
+                return TypedResults.Problem(title: "discovery.invalid_ids", detail: "branchIds must be comma-separated GUIDs (max 200).", statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            branches.Add(id);
+        }
+
         var tags = (diets ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(t => t.ToLowerInvariant())
@@ -40,6 +51,11 @@ public static class DishDiscoveryEndpoints
         foreach (var tag in tags)
         {
             items = items.Where(p => p.DietaryTags.Contains(tag));
+        }
+
+        if (branches.Count > 0)
+        {
+            items = items.Where(p => branches.Contains(p.BranchId));
         }
 
         if (maxPrice is { } max)

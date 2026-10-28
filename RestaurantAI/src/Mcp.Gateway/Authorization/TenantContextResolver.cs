@@ -10,7 +10,8 @@ namespace RestaurantAI.Mcp.Gateway.Authorization;
 /// </summary>
 public sealed class TenantContextResolver(IHttpContextAccessor accessor)
 {
-    public ToolCallerContext? Resolve()
+    /// <param name="requireTenant">When false, a caller without a restaurant context resolves with <see cref="Guid.Empty"/> as tenant.</param>
+    public ToolCallerContext? Resolve(bool requireTenant = true)
     {
         var http = accessor.HttpContext;
         var user = http?.User;
@@ -19,10 +20,19 @@ public sealed class TenantContextResolver(IHttpContextAccessor accessor)
             return null;
         }
 
-        if (!Guid.TryParse(user.FindFirstValue(PlatformClaims.Subject), out var userId)
-            || !Guid.TryParse(user.FindFirstValue(PlatformClaims.TenantId), out var tenantId))
+        if (!Guid.TryParse(user.FindFirstValue(PlatformClaims.Subject), out var userId))
         {
             return null;
+        }
+
+        if (!Guid.TryParse(user.FindFirstValue(PlatformClaims.TenantId), out var tenantId))
+        {
+            if (requireTenant)
+            {
+                return null;
+            }
+
+            tenantId = Guid.Empty;
         }
 
         var roles = user.FindAll(PlatformClaims.Role).Select(c => c.Value).ToHashSet();

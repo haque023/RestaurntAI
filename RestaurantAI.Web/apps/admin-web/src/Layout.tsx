@@ -7,8 +7,18 @@ export function Layout() {
   return (
     <AppShell
       appName="Platform Admin"
-      nav={user ? [{ to: "/", label: "Overview", end: true }, { to: "/restaurants/new", label: "Register restaurant" }] : []}
-      user={user ? { label: "Administrator", detail: user.userId } : null}
+      nav={
+        user
+          ? [
+              { to: "/", label: "Overview", end: true },
+              { to: "/restaurants", label: "Restaurants" },
+              { to: "/ai", label: "AI governance" },
+              { to: "/audit", label: "Audit log" },
+              { to: "/users", label: "Users" },
+            ]
+          : []
+      }
+      user={user ? { label: user.displayName ?? user.email ?? "Administrator", detail: user.email ?? undefined } : null}
       onSignOut={signOut}
     >
       <Outlet />

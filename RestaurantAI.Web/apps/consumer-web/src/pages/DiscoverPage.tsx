@@ -5,6 +5,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useDeferredValue, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { DIET_OPTIONS, joinDishesWithBranches, RADIUS_OPTIONS_KM, toggle, uniqueBranchIds } from "../discovery/discovery";
+import { DiscoveryAssistant } from "../discovery/DiscoveryAssistant";
 import { FavoriteButton, RestaurantCard } from "../discovery/RestaurantCard";
 import { useNearMe, type Coordinates } from "../discovery/useLocation";
 
@@ -23,6 +24,8 @@ export function DiscoverPage() {
   return (
     <>
       <PageHeader title="Discover" description="Find restaurants and dishes near you, then order or reserve." />
+
+      <DiscoveryAssistant nearMe={nearMe} />
 
       <div className="row" role="tablist" aria-label="Search for">
         {(["restaurants", "dishes"] as const).map((tab) => (
@@ -209,37 +212,26 @@ function DishResults({ query, diets, openNow, coords, radiusKm }: ResultProps) {
   );
 }
 
-/** Manual QR entry for development and for guests who can't scan. */
+/** For guests who can't scan: the code printed under the table's QR. */
 function QrEntry() {
   const navigate = useNavigate();
-  const [tenantId, setTenantId] = useState("");
-  const [branchId, setBranchId] = useState("");
-  const [tableId, setTableId] = useState("");
+  const [code, setCode] = useState("");
 
   function open(event: FormEvent) {
     event.preventDefault();
-    const base = `/r/${tenantId.trim()}/${branchId.trim()}`;
-    navigate(tableId.trim() ? `${base}?table=${tableId.trim()}` : base);
+    navigate(`/t/${encodeURIComponent(code.trim())}`);
   }
 
   return (
     <details className="card">
       <summary className="small muted" style={{ cursor: "pointer" }}>
-        At a table? Enter the code from the QR sticker
+        At a table? Enter the code printed under the QR
       </summary>
-      <form className="stack" onSubmit={open} style={{ marginTop: 12 }}>
-        <div className="form-grid">
-          <Field label="Restaurant id">
-            <input value={tenantId} onChange={(e) => setTenantId(e.target.value)} required />
-          </Field>
-          <Field label="Branch id">
-            <input value={branchId} onChange={(e) => setBranchId(e.target.value)} required />
-          </Field>
-          <Field label="Table id (optional)">
-            <input value={tableId} onChange={(e) => setTableId(e.target.value)} />
-          </Field>
-        </div>
-        <div>
+      <form className="row" onSubmit={open} style={{ marginTop: 12 }}>
+        <Field label="Table code">
+          <input value={code} onChange={(e) => setCode(e.target.value)} required minLength={8} autoCapitalize="off" spellCheck={false} />
+        </Field>
+        <div style={{ alignSelf: "flex-end" }}>
           <Button type="submit">Open menu</Button>
         </div>
       </form>

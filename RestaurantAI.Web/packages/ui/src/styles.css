@@ -356,3 +356,32 @@ table select {
   min-height: 36px;
   max-width: 100%;
 }
+
+/* ---- Chat */
+.chat-text { display: flex; flex-direction: column; gap: var(--space-2); }
+.chat-text ul { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: var(--space-1); }
+.chat-log { display: flex; flex-direction: column; gap: var(--space-3); max-height: 460px; overflow-y: auto; padding: var(--space-1); }
+.chat-bubble { padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); max-width: 88%; line-height: 1.45; }
+.chat-bubble-user { align-self: flex-end; background: var(--color-primary); color: var(--color-primary-contrast); }
+.chat-bubble-assistant { align-self: flex-start; background: var(--color-surface-muted); }
+.chat-bubble-assistant a { font-weight: 600; }
+
+/* ---- Boards (orders, kitchen) */
+.board { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); align-items: start; }
+.board-column { background: var(--color-surface-muted); border-radius: var(--radius-md); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); min-height: 120px; }
+.board-column h3 { display: flex; justify-content: space-between; align-items: center; }
+.ticket { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.ticket ul { margin: 0; padding-left: 1.1rem; }
+.stat-grid { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.stat { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+.stat-value { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat-label { color: var(--color-text-muted); font-size: 0.85rem; }
+.bar-row { display: grid; grid-template-columns: 140px 1fr 70px; gap: var(--space-2); align-items: center; font-size: 0.9rem; }
+.bar { height: 10px; border-radius: 999px; background: var(--color-primary); min-width: 2px; }
+.qr-card { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; }
+.qr-card svg { width: 168px; height: 168px; }
+
+@media print {
+  .app-header, .no-print { display: none !important; }
+  .qr-card { break-inside: avoid; border: 1px solid #000; }
+}

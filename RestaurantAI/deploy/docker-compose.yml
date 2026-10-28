@@ -1,5 +1,6 @@
 # Full platform stack (all services in containers). Run from the repository root:
-#   JWT_SIGNING_KEY=<32+ chars> docker compose -f deploy/docker-compose.yml up --build
+#   JWT_SIGNING_KEY=<32+ chars> ANTHROPIC_API_KEY=<key> ADMIN_EMAIL=<email> ADMIN_PASSWORD=<password> \
+#     docker compose -f deploy/docker-compose.yml up --build
 # Production should use a managed identity provider (Authentication__Jwt__Authority) instead of a signing key.
 name: restaurant-ai
 
@@ -14,15 +15,36 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
     ports: ["8080:8080"]
-    depends_on: [identity-api, consumer-api, restaurant-api, menu-api, order-api, reservation-api, loyalty-api, admin-api]
+    depends_on: [identity-api, consumer-api, restaurant-api, menu-api, order-api, reservation-api, loyalty-api, admin-api, ai-api]
 
   mcp-gateway:
     build: { context: .., dockerfile: deploy/docker/mcp.Dockerfile }
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Services__Gateway: http://gateway-api:8080
       Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
     ports: ["8090:8080"]
-    depends_on: [gateway-api, redis]
+    depends_on: [gateway-api, redis, rabbitmq]
+
+  # AI platform host: AI waiter + discovery assistant (Claude), tools via the MCP gateway.
+  ai-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Ai.Api, SERVICE_DIR: AI }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      Services__Gateway: http://gateway-api:8080
+      AI__Claude__McpEndpoint: http://mcp-gateway:8080/mcp
+      AI__Claude__ApiKey: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
 
   identity-api:
     build:
@@ -30,6 +52,10 @@ services:
       args: { SERVICE: Identity.Api }
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      Services__Gateway: http://gateway-api:8080
+      # First platform administrator, created only when none exists.
+      Identity__BootstrapAdmin__Email: ${ADMIN_EMAIL:-}
+      Identity__BootstrapAdmin__Password: ${ADMIN_PASSWORD:-}
       ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
       ConnectionStrings__Redis: redis:6379
       RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672

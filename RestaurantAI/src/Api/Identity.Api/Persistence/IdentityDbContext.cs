@@ -21,6 +21,10 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         modelBuilder.AddOutbox();
         base.OnModelCreating(modelBuilder);
     }
+
+    /// <summary>Users holding any membership in the tenant.</summary>
+    public IQueryable<UserAccount> UsersInTenant(Guid tenantId) =>
+        Users.Where(u => u.Memberships.Any(m => m.TenantId == tenantId));
 }
 
 internal sealed class UserAccountConfiguration : IEntityTypeConfiguration<UserAccount>
@@ -32,9 +36,16 @@ internal sealed class UserAccountConfiguration : IEntityTypeConfiguration<UserAc
         builder.Property(u => u.ExternalSubject).HasMaxLength(200).IsRequired();
         builder.Property(u => u.Email).HasMaxLength(320).IsRequired();
         builder.Property(u => u.DisplayName).HasMaxLength(200);
+        builder.Property(u => u.PasswordHash).HasMaxLength(200);
+        builder.Property(u => u.IsActive).HasDefaultValue(true);
+        builder.Property(u => u.CreatedAt).HasDefaultValueSql("now()");
         builder.HasIndex(u => u.ExternalSubject).IsUnique();
         builder.HasIndex(u => u.Email).IsUnique();
-        builder.OwnsMany(u => u.Memberships, m => m.ToJson("memberships"));
+        builder.OwnsMany(u => u.Memberships, m =>
+        {
+            m.ToJson("memberships");
+            m.Property(x => x.TenantName).HasMaxLength(200);
+        });
         builder.Ignore(u => u.DomainEvents);
     }
 }
