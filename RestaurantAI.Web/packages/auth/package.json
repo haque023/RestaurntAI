@@ -1,0 +1,19 @@
+{
+  "name": "@restaurant-ai/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@restaurant-ai/api-client": "*"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-router": "^8.0.0"
+  }
+}

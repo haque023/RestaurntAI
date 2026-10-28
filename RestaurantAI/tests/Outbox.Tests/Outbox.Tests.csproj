@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>RestaurantAI.Outbox.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Infrastructure\Messaging\Infrastructure.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\Domain\Order.Domain\Order.Domain.csproj" />
+  </ItemGroup>
+</Project>

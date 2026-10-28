@@ -1,0 +1,9 @@
+{
+  "folders": [
+    { "name": "Backend (.NET)", "path": "RestaurantAI" },
+    { "name": "Frontend (React)", "path": "RestaurantAI.Web" }
+  ],
+  "settings": {
+    "files.exclude": { "**/bin": true, "**/obj": true, "**/node_modules": true, "**/dist": true }
+  }
+}

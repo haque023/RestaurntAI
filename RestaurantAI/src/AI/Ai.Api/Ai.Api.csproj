@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>RestaurantAI.AI.Api</RootNamespace>
+    <!-- Holds the Anthropic API key locally (outside the repository): dotnet user-secrets set AI:Claude:ApiKey ... -->
+    <UserSecretsId>restaurant-ai-ai-api</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Foundry.Integration\Foundry.Integration.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\ServiceDefaults\ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>
