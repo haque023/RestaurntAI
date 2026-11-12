@@ -1,0 +1,193 @@
+# Full platform stack (all services in containers). Run from the repository root:
+#   JWT_SIGNING_KEY=<32+ chars> ANTHROPIC_API_KEY=<key> ADMIN_EMAIL=<email> ADMIN_PASSWORD=<password> \
+#     docker compose -f deploy/docker-compose.yml up --build
+# Production should use a managed identity provider (Authentication__Jwt__Authority) instead of a signing key.
+name: restaurant-ai
+
+x-api-build: &api-build
+  context: ..
+  dockerfile: deploy/docker/api.Dockerfile
+
+services:
+  gateway-api:
+    build: { context: .., dockerfile: deploy/docker/gateway.Dockerfile }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    ports: ["8080:8080"]
+    depends_on: [identity-api, consumer-api, restaurant-api, menu-api, order-api, reservation-api, loyalty-api, admin-api, ai-api]
+
+  mcp-gateway:
+    build: { context: .., dockerfile: deploy/docker/mcp.Dockerfile }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Services__Gateway: http://gateway-api:8080
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    ports: ["8090:8080"]
+    depends_on: [gateway-api, redis, rabbitmq]
+
+  # AI platform host: AI waiter + discovery assistant (Claude), tools via the MCP gateway.
+  ai-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Ai.Api }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      Services__Gateway: http://gateway-api:8080
+      AI__Claude__McpEndpoint: http://mcp-gateway:8080/mcp
+      AI__Claude__ApiKey: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  identity-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Identity.Api }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Services__Gateway: http://gateway-api:8080
+      # First platform administrator, created only when none exists.
+      Identity__BootstrapAdmin__Email: ${ADMIN_EMAIL:-}
+      Identity__BootstrapAdmin__Password: ${ADMIN_PASSWORD:-}
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+
+  consumer-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Consumer.Api }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+
+  restaurant-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Restaurant.Api }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+
+  menu-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Menu.Api }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+
+  order-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Order.Api }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+      Services__Menu: http://menu-api:8080
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+
+  reservation-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Reservation.Api }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+
+  loyalty-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Loyalty.Api }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+
+  admin-api:
+    build:
+      <<: *api-build
+      args: { SERVICE: Admin.Api }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Platform: Host=postgres;Database=restaurant_ai;Username=restaurant_app;Password=restaurant_app
+      ConnectionStrings__Redis: redis:6379
+      RabbitMQ__ConnectionString: amqp://guest:guest@rabbitmq:5672
+      Database__MigrateOnStartup: "true"
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: restaurant_ai
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d restaurant_ai"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    ports: ["15672:15672"]
+
+volumes:
+  postgres-data:

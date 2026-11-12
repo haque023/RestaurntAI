@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <RootNamespace>RestaurantAI.Context.Orchestrator.Tests</RootNamespace>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\AI\Context.Orchestrator\Context.Orchestrator.csproj" />
-  </ItemGroup>
-</Project>

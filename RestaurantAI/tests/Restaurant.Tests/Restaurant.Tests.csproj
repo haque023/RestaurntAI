@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <RootNamespace>RestaurantAI.Restaurant.Tests</RootNamespace>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Application\Restaurant.Application\Restaurant.Application.csproj" />
-  </ItemGroup>
-</Project>

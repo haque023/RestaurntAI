@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <RootNamespace>RestaurantAI.Mcp.Gateway.Tests</RootNamespace>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Mcp.Gateway\Mcp.Gateway.csproj" />
-  </ItemGroup>
-</Project>
