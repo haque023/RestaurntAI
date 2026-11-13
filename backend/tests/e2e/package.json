@@ -1,0 +1,21 @@
+{
+  "name": "restaurant-ai-e2e",
+  "private": true,
+  "description": "End-to-end tests for RestaurantAI: API journeys and browser journeys against an isolated stack.",
+  "scripts": {
+    "stack:up": "bash stack/stack.sh up",
+    "stack:down": "bash stack/stack.sh down",
+    "stack:status": "bash stack/stack.sh status",
+    "test:api": "E2E_NO_WEB=true playwright test --project=api",
+    "test:browser": "playwright test --project=browser",
+    "test": "playwright test",
+    "test:live": "RUN_LIVE_CLAUDE_TESTS=true playwright test",
+    "report": "playwright show-report",
+    "test:support": "playwright test -c playwright.support.config.ts --project=support",
+    "typecheck": "../../../frontend/node_modules/.bin/tsc -p tsconfig.json --typeRoots ../../../frontend/node_modules/@types --types node",
+    "cleanup:historical": "playwright test -c playwright.support.config.ts --project=maintenance"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}
