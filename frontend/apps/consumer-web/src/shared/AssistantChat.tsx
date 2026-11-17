@@ -1,6 +1,28 @@
 import { Button, Card, ChatText, ErrorAlert } from "@restaurant-ai/ui";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { canSpeak, detectLanguage, speak, stopSpeaking, useHasVoice, useSpeechRecognition, VOICE_LANGUAGES, type VoiceLanguage } from "./voice";
+
+const LANGUAGE_KEY = "rai.consumer.voice.language";
+const READ_ALOUD_KEY = "rai.consumer.voice.readAloud";
+
+function initialLanguage(): VoiceLanguage {
+  try {
+    const saved = localStorage.getItem(LANGUAGE_KEY);
+    if (saved === "en-US" || saved === "ar-KW") return saved;
+  } catch {
+    // storage unavailable
+  }
+  return typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("ar") ? "ar-KW" : "en-US";
+}
+
+function remember(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // storage unavailable: the choice lasts for this page only
+  }
+}
 
 interface ChatLine {
   role: "user" | "assistant";
@@ -48,6 +70,52 @@ export function AssistantChat({ title, intro, suggestions, storageKey, placehold
   const [open, setOpen] = useState(startOpen || chat.lines.length > 0);
   const endRef = useRef<HTMLDivElement>(null);
 
+  // Voice: speech in (browser recognition) and replies read aloud (browser speech synthesis).
+  const [language, setLanguage] = useState<VoiceLanguage>(initialLanguage);
+  const [readAloud, setReadAloud] = useState(() => {
+    try {
+      return localStorage.getItem(READ_ALOUD_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [speaking, setSpeaking] = useState<number | null>(null);
+  const spokenTurn = useRef(false);
+  const voice = useSpeechRecognition(language, (transcript) => ask(transcript, true));
+  const hasVoice = useHasVoice(language);
+  const speechOutput = canSpeak();
+
+  const lineCount = useRef(chat.lines.length);
+  useEffect(() => {
+    lineCount.current = chat.lines.length;
+  }, [chat.lines.length]);
+
+  useEffect(() => () => stopSpeaking(), []);
+
+  function readLine(index: number, text: string) {
+    if (speaking === index) {
+      stopSpeaking();
+      setSpeaking(null);
+      return;
+    }
+    if (speak(text, detectLanguage(text), () => setSpeaking((current) => (current === index ? null : current)))) setSpeaking(index);
+  }
+
+  function chooseLanguage(code: VoiceLanguage) {
+    setLanguage(code);
+    remember(LANGUAGE_KEY, code);
+  }
+
+  function toggleReadAloud() {
+    const next = !readAloud;
+    setReadAloud(next);
+    remember(READ_ALOUD_KEY, String(next));
+    if (!next) {
+      stopSpeaking();
+      setSpeaking(null);
+    }
+  }
+
   useEffect(() => {
     try {
       sessionStorage.setItem(storageKey, JSON.stringify(chat));
@@ -61,14 +129,25 @@ export function AssistantChat({ title, intro, suggestions, storageKey, placehold
     mutationFn: (message: string) => send(chat.conversationId, message),
     onMutate: (message) => setChat((c) => ({ ...c, lines: [...c.lines, { role: "user", text: message }] })),
     onSuccess: (response) => {
+      // The reply is appended after every line already shown (including the question).
+      const index = lineCount.current;
       setChat((c) => ({ conversationId: response.conversationId, lines: [...c.lines, { role: "assistant", text: response.reply }] }));
+      // A question asked by voice is answered by voice; typed questions only when "Read replies aloud" is on.
+      if (spokenTurn.current || readAloud) {
+        if (speak(response.reply, detectLanguage(response.reply), () => setSpeaking((current) => (current === index ? null : current)))) setSpeaking(index);
+      }
+      spokenTurn.current = false;
       onReply?.();
+    },
+    onError: () => {
+      spokenTurn.current = false;
     },
   });
 
-  function ask(message: string) {
+  function ask(message: string, spoken = false) {
     const text = message.trim();
     if (!text || turn.isPending) return;
+    spokenTurn.current = spoken;
     turn.mutate(text);
   }
 
@@ -94,31 +173,88 @@ export function AssistantChat({ title, intro, suggestions, storageKey, placehold
         <h2>{title}</h2>
         <div className="row">
           {chat.lines.length > 0 && (
-            <Button size="sm" variant="ghost" onClick={() => setChat({ conversationId: null, lines: [] })}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                stopSpeaking();
+                setSpeaking(null);
+                setChat({ conversationId: null, lines: [] });
+              }}
+            >
               New conversation
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={() => setOpen(false)} aria-label={`Close ${title}`}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              stopSpeaking();
+              voice.stop();
+              setOpen(false);
+            }}
+            aria-label={`Close ${title}`}
+          >
             ✕
           </Button>
         </div>
       </div>
       {toolbar}
 
+      {(voice.supported || speechOutput) && (
+        <div className="row small" role="group" aria-label="Voice settings">
+          <span className="muted">Voice:</span>
+          {VOICE_LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              type="button"
+              className="chip"
+              lang={l.code}
+              aria-pressed={language === l.code}
+              onClick={() => chooseLanguage(l.code)}
+            >
+              {l.label}
+            </button>
+          ))}
+          {speechOutput && (
+            <button type="button" className="chip" aria-pressed={readAloud} onClick={toggleReadAloud}>
+              {readAloud ? "🔊 Reading replies aloud" : "🔈 Read replies aloud"}
+            </button>
+          )}
+          {speechOutput && !hasVoice && <span className="muted">This device has no {language === "ar-KW" ? "Arabic" : "English"} voice installed; replies may be read with a default voice.</span>}
+        </div>
+      )}
+
       <div className="chat-log" aria-live="polite">
         {chat.lines.length === 0 && <p className="muted small">{intro}</p>}
         {chat.lines.map((line, index) =>
           line.role === "user" ? (
-            <div key={index} className="chat-bubble chat-bubble-user small" style={{ whiteSpace: "pre-wrap" }}>
+            <div key={index} dir="auto" className="chat-bubble chat-bubble-user small" style={{ whiteSpace: "pre-wrap" }}>
               {line.text}
             </div>
           ) : (
-            <div key={index} className="chat-bubble chat-bubble-assistant small">
+            <div key={index} dir="auto" className="chat-bubble chat-bubble-assistant small">
               <ChatText text={line.text} />
+              {speechOutput && (
+                <button
+                  type="button"
+                  className="chip"
+                  style={{ marginTop: 6 }}
+                  aria-label={speaking === index ? "Stop reading this reply" : "Read this reply aloud"}
+                  onClick={() => readLine(index, line.text)}
+                >
+                  {speaking === index ? "■ Stop" : "🔊 Listen"}
+                </button>
+              )}
             </div>
           ),
         )}
         {turn.isPending && <div className="small muted">Thinking…</div>}
+        {voice.state === "listening" && (
+          <div className="small muted" dir="auto" role="status">
+            🎙️ Listening{voice.interim ? `: ${voice.interim}` : "…"}
+          </div>
+        )}
         <div ref={endRef} />
       </div>
 
@@ -133,9 +269,28 @@ export function AssistantChat({ title, intro, suggestions, storageKey, placehold
       )}
 
       <ErrorAlert error={turn.error} title="No answer" />
+      {voice.error && (
+        <div className="small muted" role="alert">
+          {voice.error}
+        </div>
+      )}
       <form className="row" onSubmit={submit}>
+        {voice.supported && (
+          <Button
+            type="button"
+            variant={voice.state === "listening" ? "primary" : "default"}
+            disabled={turn.isPending}
+            aria-label={voice.state === "listening" ? "Stop listening" : `Speak to ${title} in ${language === "ar-KW" ? "Arabic" : "English"}`}
+            aria-pressed={voice.state === "listening"}
+            onClick={() => (voice.state === "listening" ? voice.stop() : voice.start())}
+          >
+            {voice.state === "listening" ? "■" : "🎤"}
+          </Button>
+        )}
         <input
           aria-label={`Message ${title}`}
+          dir="auto"
+          lang={language}
           value={draft}
           maxLength={2000}
           onChange={(e) => setDraft(e.target.value)}
